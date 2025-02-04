@@ -7,8 +7,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="CoreAudio" Version="1.40.0" />
-  </ItemGroup>
-
 </Project>
