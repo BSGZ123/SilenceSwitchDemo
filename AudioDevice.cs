@@ -53,5 +53,10 @@ namespace SilenceSwitchDemo
                 return null;
             }
         }
+
+        internal static NativeMethods.IMMDevice? GetDefaultAudioDevice()
+        {
+            throw new NotImplementedException();
+        }
     }
 }
