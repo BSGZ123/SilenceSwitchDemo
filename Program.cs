@@ -19,20 +19,82 @@ namespace SilenceSwitchDemo
             //枚举音频设备 所有音频端点及默认音频端点 
             MMDeviceEnumerator deviceEnumerator = new MMDeviceEnumerator(Guid.NewGuid());
             //获取默认的多媒体音频渲染设备 (播放设备)  肯定播放设备  设备角色为多媒体
-            MMDevice device =deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render,Role.Multimedia);
+            MMDevice device = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
 
             //现在就是遍历当前音频设备上所有的音频会话
             foreach (var session in device.AudioSessionManager2.Sessions)
             {
                 //检测当前音频会话是否处于活跃状态
-                if(session.State == AudioSessionState.AudioSessionStateActive)
+                if (session.State == AudioSessionState.AudioSessionStateActive)
                 {
                     Console.CursorVisible = false;
                     PrintSessionInfo(session);//打印当前活动音频会话参数
-                    
+
+                    //获取当前当前音频会话的音频计量信息
+                    AudioMeterInformation mi = session.AudioMeterInformation;
+                    //获取当前音频会话的简单音量控制接口，用于控制静音和音量。
+                    SimpleAudioVolume volume = session.SimpleAudioVolume;
+
+                    (int cw, int ch) = (Console.WindowWidth, Console.WindowHeight);
+                    int start = Console.CursorTop;
+
+                    //不断更新 VU 表和处理用户输入
+                    while (true)
+                    {
+                        if (cw != Console.WindowWidth || ch != Console.WindowHeight)
+                        {
+                            Console.Clear();
+                            PrintSessionInfo(session);
+
+                            start = Console.CursorTop;
+                            Console.SetCursorPosition(0, start);
+                            cw = Console.WindowWidth;
+                            ch = Console.WindowHeight;
+                        }
+
+                        int w = Console.WindowWidth - 1;
+                        int len = (int)(mi.MasterPeakValue * w);
+
+                        Console.SetCursorPosition(0, start);
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        //显示音量
+                        for (int j = 0; j < len; j++) Console.Write("█");
+                        for (int j = 0; j < w - len + 1; j++) Console.Write(" ");
+
+                        Console.SetCursorPosition(0, start + 1);
+                        WriteLine("Mute   ", $"{volume.Mute,6}");
+                        WriteLine("Master ", $"{volume.MasterVolume * 100,6:N2}");
+
+                        if (Console.KeyAvailable)
+                        {
+                            ConsoleKeyInfo key = Console.ReadKey(true);
+                            switch (key.Key)
+                            {
+                                //切换静音状态
+                                case ConsoleKey.M:
+                                    volume.Mute = !volume.Mute;
+                                    break;
+                                case ConsoleKey.Escape:
+                                case ConsoleKey.Q:
+                                    ResetConsole();
+                                    return;
+                                case ConsoleKey.DownArrow:
+                                    float curvol = volume.MasterVolume - 0.1f;
+                                    if (curvol < 0) curvol = 0;
+                                    volume.MasterVolume = curvol;
+                                    break;
+                                case ConsoleKey.UpArrow:
+                                    float curvold = volume.MasterVolume + 0.1f;
+                                    if (curvold > 1) curvold = 1;
+                                    volume.MasterVolume = curvold;
+                                    break;
+                            }
+
+                        }
+                    }
+
                 }
             }
-
         }
 
         private static void PrintSessionInfo(AudioSessionControl2 session)
@@ -50,12 +112,12 @@ namespace SilenceSwitchDemo
             WriteLine("ProcessName", p.ProcessName);
             WriteLine("MainWindowTitle", p.MainWindowTitle);
 
-            //Console.ForegroundColor = ConsoleColor.DarkYellow;
-            //Console.WriteLine("\n---[Hotkeys]---");
-            //WriteLine("M", "Toggle Mute");
-            //WriteLine("↑", "Lower volume");
-            //WriteLine("↓", "Raise volume");
-            //WriteLine("Q", "Quit\n");
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine("\n---[Hotkeys]---");
+            WriteLine("M", "Toggle Mute");
+            WriteLine("↑", "Lower volume");
+            WriteLine("↓", "Raise volume");
+            WriteLine("Q", "Quit\n");
         }
 
         static void WriteLine(string key, string value)
